@@ -24,7 +24,7 @@ GOOGLE_SAT = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
 YEARS = list(range(2019, 2026))
 
 st.set_page_config(page_title="LF NDVI pārlūks", layout="wide")
-st.title("LF_ukri – NDVI pārlūks 2019–2025")
+st.title("NDVI pārlūks 2019–2025 bērzu stādījumiem")
 
 st.markdown("""
 Rīks vizualizē Sentinel-2 satelītuzņēmumu vasaras (jūnijs–augusts) NDVI datus 2019.–2025. gadam bērzu stādījumu nogabaliem Ukru apkaimē. NDVI (normalizētais diferenciālais
