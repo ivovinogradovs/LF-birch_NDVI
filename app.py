@@ -12,8 +12,10 @@ import plotly.graph_objects as go
 import matplotlib.colors as mcolors
 import matplotlib
 import numpy as np
-import ee
-import geemap
+import rasterio
+import io
+import base64
+import matplotlib.image as mpimg
 
 # ── Config ─────────────────────────────────────────────────
 CSV_PATH = "/Users/ivo/Documents/darbam/LF/LF_ukri_NDVI_2019_2025.csv"
@@ -24,41 +26,39 @@ YEARS = list(range(2019, 2026))
 st.set_page_config(page_title="LF NDVI pārlūks", layout="wide")
 st.title("LF_ukri – NDVI pārlūks 2019–2025")
 
-# ── Earth Engine init (once per session) ────────────────────
-@st.cache_resource
-def _init_ee():
-    ee.Initialize(project="gee-ivo")
+# ── TIF config & raster→overlay helper ─────────────────────
+TIF_DIR = "/Users/ivo/Documents/darbam/LF/tif"
+TIF_CMAP = matplotlib.colormaps["RdYlGn"]
+TIF_NORM = mcolors.Normalize(vmin=0.75, vmax=0.92)
 
-_init_ee()
+@st.cache_data
+def tif_to_overlay(year: int):
+    """Read a local GeoTIFF, apply colormap, return (base64-PNG-url, bounds)."""
+    path = f"{TIF_DIR}/LF_ukri_NDVI_{year}.tif"
+    with rasterio.open(path) as src:
+        ndvi = src.read(1).astype(float)
+        nodata = src.nodata
+        b = src.bounds  # left, bottom, right, top (EPSG:4326)
 
-# ── GEE tile URL per year (cached 1 h, re-fetched if stale) ─
-GEE_VIS = {
-    "min": 0.75,
-    "max": 0.92,
-    "palette": ["#d7191c", "#fdae61", "#ffffbf", "#a6d96a", "#1a9641"],
-}
+    # Build [[south, west], [north, east]] for folium
+    img_bounds = [[b.bottom, b.left], [b.top, b.right]]
 
-@st.cache_data(ttl=3600)
-def gee_ndvi_tile_url(year: int) -> str:
-    """Return a GEE tile URL for the June–Aug NDVI composite of *year*,
-    clipped to compartment boundaries derived from the local shapefile."""
-    clip_geom = _ee_clip_geometry()  # defined after gdf is loaded; late binding is fine
+    # Mask nodata / NaN → transparent
+    if nodata is not None:
+        mask = (ndvi == nodata) | np.isnan(ndvi)
+    else:
+        mask = np.isnan(ndvi)
 
-    def mask_ndvi(img):
-        scl = img.select("SCL")
-        mask = scl.eq(4).Or(scl.eq(5)).Or(scl.eq(6)).Or(scl.eq(11))
-        return img.updateMask(mask).normalizedDifference(["B8", "B4"]).rename("NDVI")
+    rgba = TIF_CMAP(TIF_NORM(ndvi))          # (H, W, 4), float 0-1
+    rgba[mask] = [0.0, 0.0, 0.0, 0.0]        # fully transparent
 
-    composite = (
-        ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
-        .filterBounds(clip_geom)
-        .filterDate(f"{year}-06-01", f"{year}-08-31")
-        .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 80))
-        .map(mask_ndvi)
-        .median()
-        .clip(clip_geom)
-    )
-    return composite.getMapId(GEE_VIS)["tile_fetcher"].url_format
+    buf = io.BytesIO()
+    mpimg.imsave(buf, rgba, format="png")
+    buf.seek(0)
+    b64 = base64.b64encode(buf.read()).decode()
+    url = f"data:image/png;base64,{b64}"
+
+    return url, img_bounds
 
 # ── Load data ───────────────────────────────────────────────
 @st.cache_data
@@ -83,12 +83,6 @@ def load_data():
 
 
 df, gdf = load_data()
-
-# ── EE clip geometry from local GDF (cached for session) ────
-@st.cache_resource
-def _ee_clip_geometry():
-    fc = geemap.gdf_to_ee(gdf[["compartment_id", "geometry"]])
-    return fc.geometry()
 
 # ── Centroid ────────────────────────────────────────────────
 centroid = gdf.to_crs(epsg=3857).geometry.union_all().centroid
@@ -303,52 +297,51 @@ with col_panel:
                 st.caption(f"Nav datu gadam {selected_year}.")
 
 # ════════════════════════════════════════════════════════════
-# PIXEL-LEVEL GEE MAP – expander below two-column layout
+# PIXEL-LEVEL NDVI MAP – local GeoTIFFs, no GEE connection
 # ════════════════════════════════════════════════════════════
-with st.expander(f"Pikseļu līmeņa NDVI karte (GEE) — {selected_year}", expanded=True):
+with st.expander(f"Pikseļu līmeņa NDVI karte — {selected_year}", expanded=True):
     st.caption(
         "Sentinel-2 jūnijs–augusts mediānais NDVI kompozīts · apgriezts līdz nogabaliem · "
         "vizualizācija: 0.75–0.92 · sarkans→zaļš palete. Pārslēdziet gadus slāņu kontrolē. "
         "Baltas kontūras = nogabalu robežas."
     )
-    try:
-        m_gee = folium.Map(
-            location=[MAP_LAT, MAP_LON],
-            zoom_start=14,
-            tiles=GOOGLE_SAT,
-            attr="Google Satellite",
-        )
 
-        # All 7 annual NDVI tile layers – only selected year visible by default
-        for yr in YEARS:
-            tile_url = gee_ndvi_tile_url(yr)
-            folium.TileLayer(
-                tiles=tile_url,
-                attr="Google Earth Engine",
+    m_tif = folium.Map(
+        location=[MAP_LAT, MAP_LON],
+        zoom_start=14,
+        tiles=GOOGLE_SAT,
+        attr="Google Satellite",
+    )
+
+    for yr in YEARS:
+        try:
+            url, img_bounds = tif_to_overlay(yr)
+            folium.raster_layers.ImageOverlay(
+                image=url,
+                bounds=img_bounds,
                 name=f"NDVI {yr}",
-                overlay=True,
+                opacity=0.8,
                 show=(yr == selected_year),
-                opacity=0.85,
-            ).add_to(m_gee)
+                overlay=True,
+            ).add_to(m_tif)
+        except FileNotFoundError:
+            pass  # skip years whose TIF hasn't been exported yet
 
-        # Compartment outlines – added last so they sit on top
-        folium.GeoJson(
-            gdf[["compartment_id", "geometry"]].__geo_interface__,
-            name="Nogabali",
-            style_function=lambda _: {
-                "fillColor": "none",
-                "color": "white",
-                "weight": 0.8,
-                "fillOpacity": 0,
-            },
-            tooltip=folium.GeoJsonTooltip(
-                fields=["compartment_id"], aliases=["Nogabals:"]
-            ),
-        ).add_to(m_gee)
+    # Compartment outlines – added last so they sit on top
+    folium.GeoJson(
+        gdf[["compartment_id", "geometry"]].__geo_interface__,
+        name="Nogabali",
+        style_function=lambda _: {
+            "fillColor": "none",
+            "color": "white",
+            "weight": 0.8,
+            "fillOpacity": 0,
+        },
+        tooltip=folium.GeoJsonTooltip(
+            fields=["compartment_id"], aliases=["Nogabals:"]
+        ),
+    ).add_to(m_tif)
 
-        folium.LayerControl(collapsed=False).add_to(m_gee)
+    folium.LayerControl(collapsed=False).add_to(m_tif)
 
-        st_folium(m_gee, key="gee_map", width="100%", height=560, returned_objects=[])
-
-    except Exception as exc:
-        st.error(f"GEE kļūda: {exc}")
+    st_folium(m_tif, key="tif_map", width="100%", height=560, returned_objects=[])
