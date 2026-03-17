@@ -202,9 +202,9 @@ with col_map:
     st.markdown(
         f'<div style="{gradient} height:12px; border-radius:3px; margin:4px 0;"></div>'
         f'<div style="display:flex;justify-content:space-between;">'
-        f'<small>Zems {vmin_leg:.2f}</small>'
+        f'<small>Relatīvi zems {vmin_leg:.2f}</small>'
         f'<small style="text-align:center">NDVI {selected_year}</small>'
-        f'<small>Augsts {vmax_leg:.2f}</small></div>',
+        f'<small>Relatīvi augsts {vmax_leg:.2f}</small></div>',
         unsafe_allow_html=True,
     )
 
