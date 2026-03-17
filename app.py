@@ -26,6 +26,17 @@ YEARS = list(range(2019, 2026))
 st.set_page_config(page_title="LF NDVI pārlūks", layout="wide")
 st.title("LF_ukri – NDVI pārlūks 2019–2025")
 
+st.markdown("""
+Rīks vizualizē Sentinel-2 satelītuzņēmumu vasaras (jūnijs–augusts) NDVI datus 2019.–2025. gadam
+Latvijas Finieris bērzu stādījumu nogabaliem Ukru apkaimē. NDVI (normalizētais diferenciālais
+veģetācijas indekss) atspoguļo koksnes veģetācijas vitalitāti – zemākas vērtības var liecināt par
+stresa faktoriem kā sausums, kaitēkļi vai mehāniski bojājumi. Karte ļauj salīdzināt nogabalu
+vitalitāti pa gadiem, savukārt laika rindas grafiks rāda katra nogabala individuālo dinamiku un
+iekšējo neviendabīgumu (P10–P90 josla). Pikseļu līmeņa karte (lapas apakšā) ļauj novērtēt telpisko
+sadalījumu 10 m izšķirtspējā – identificējot stresa perēkļus nogabalu iekšienē. Rīks izstrādāts kā
+prototips dabā balstītu risinājumu plānošanas un monitoringa atbalstam.
+""")
+
 # ── TIF config & raster→overlay helper ─────────────────────
 TIF_DIR = "tif"
 TIF_CMAP = matplotlib.colormaps["RdYlGn"]
@@ -129,7 +140,7 @@ col_map, col_panel = st.columns([65, 35])
 # ════════════════════════════════════════════════════════════
 with col_map:
     selected_year = st.selectbox(
-        "Krāsot nogabalus pēc gada",
+        "Atlasīt gadu",
         options=YEARS,
         index=YEARS.index(2025),
         key="year_sel",
