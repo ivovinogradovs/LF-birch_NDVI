@@ -18,8 +18,8 @@ import base64
 import matplotlib.image as mpimg
 
 # ── Config ─────────────────────────────────────────────────
-CSV_PATH = "/Users/ivo/Documents/darbam/LF/LF_ukri_NDVI_2019_2025.csv"
-SHP_PATH = "/Users/ivo/Documents/darbam/LF/LF_ukri.shp"
+CSV_PATH = "LF_ukri_NDVI_2019_2025.csv"
+SHP_PATH = "LF_ukri.shp"
 GOOGLE_SAT = "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
 YEARS = list(range(2019, 2026))
 
@@ -27,7 +27,7 @@ st.set_page_config(page_title="LF NDVI pārlūks", layout="wide")
 st.title("LF_ukri – NDVI pārlūks 2019–2025")
 
 # ── TIF config & raster→overlay helper ─────────────────────
-TIF_DIR = "/Users/ivo/Documents/darbam/LF/tif"
+TIF_DIR = "tif"
 TIF_CMAP = matplotlib.colormaps["RdYlGn"]
 TIF_NORM = mcolors.Normalize(vmin=0.75, vmax=0.92)
 
