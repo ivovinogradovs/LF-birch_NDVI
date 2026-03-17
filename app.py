@@ -27,8 +27,7 @@ st.set_page_config(page_title="LF NDVI pārlūks", layout="wide")
 st.title("LF_ukri – NDVI pārlūks 2019–2025")
 
 st.markdown("""
-Rīks vizualizē Sentinel-2 satelītuzņēmumu vasaras (jūnijs–augusts) NDVI datus 2019.–2025. gadam
-Latvijas Finieris bērzu stādījumu nogabaliem Ukru apkaimē. NDVI (normalizētais diferenciālais
+Rīks vizualizē Sentinel-2 satelītuzņēmumu vasaras (jūnijs–augusts) NDVI datus 2019.–2025. gadam bērzu stādījumu nogabaliem Ukru apkaimē. NDVI (normalizētais diferenciālais
 veģetācijas indekss) atspoguļo koksnes veģetācijas vitalitāti – zemākas vērtības var liecināt par
 stresa faktoriem kā sausums, kaitēkļi vai mehāniski bojājumi. Karte ļauj salīdzināt nogabalu
 vitalitāti pa gadiem, savukārt laika rindas grafiks rāda katra nogabala individuālo dinamiku un
